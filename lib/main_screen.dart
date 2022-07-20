@@ -20,9 +20,33 @@ class _MainScreenState extends State<MainScreen> {
   int? remoteId;
   RtcEngine? rtcEngine;
 
-  Future<void> initAgora() async {
-    // Ask Permissions
-    await [Permission.microphone, Permission.camera].request();
+  Future<bool> _validateTools({required BuildContext context}) async {
+    var haveRecordPermission = await microphonePermission();
+    var haveCameraPermission = await cameraPermission();
+    if (!haveRecordPermission) {
+      showMessage("You need to give record voice permission.");
+      return false;
+    } else if (!haveCameraPermission) {
+      showMessage("You need to give camera permission.");
+      return false;
+    }
+
+    return true;
+  }
+
+  void showMessage(String title) {
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(title)));
+  }
+
+  Future<void> initAgora(BuildContext context) async {
+    //Permission Camera and audio
+    if (!await _validateTools(context: context)) {
+      await Future.delayed(const Duration(microseconds: 300), () {
+        Navigator.pop(context);
+      });
+      return;
+    }
 
     // Initializing RTC Engine
     rtcEngine = await RtcEngine.createWithContext(RtcEngineContext(appId));
@@ -71,7 +95,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    initAgora();
+    initAgora(context);
   }
 
   @override
@@ -150,5 +174,31 @@ class _MainScreenState extends State<MainScreen> {
         ),
       ),
     );
+  }
+}
+
+Future<bool> microphonePermission() async {
+  try {
+    var status = await Permission.microphone.request();
+    if (status == PermissionStatus.granted) {
+      return true;
+    } else {
+      return false;
+    }
+  } catch (e) {
+    return false;
+  }
+}
+
+Future<bool> cameraPermission() async {
+  try {
+    var status = await Permission.camera.request();
+    if (status == PermissionStatus.granted) {
+      return true;
+    } else {
+      return false;
+    }
+  } catch (e) {
+    return false;
   }
 }
